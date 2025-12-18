@@ -37,6 +37,9 @@ CONFIG_USER_NS=y
 CONFIG_CHECKPOINT_RESTORE=y
 CONFIG_SCHED_AUTOGROUP=y
 CONFIG_BLK_DEV_INITRD=y
+CONFIG_INITRAMFS_SOURCE="../build/initramfs/main"
+CONFIG_INITRAMFS_FORCE=y
+CONFIG_INITRAMFS_COMPRESSION_GZIP=y
 CONFIG_KALLSYMS_ALL=y
 CONFIG_PROFILING=y
 CONFIG_KEXEC=y
@@ -66,7 +69,7 @@ CONFIG_EFI_STUB=y
 CONFIG_EFI_MIXED=y
 CONFIG_HZ_1000=y
 CONFIG_CMDLINE_BOOL=y
-CONFIG_CMDLINE="root=/dev/nvme0n1p2 earlyprintk=ttyS0 console=ttyS0,115200 mem=8G nokaslr ignore_loglevel intel_iommu=sm_on rw kvm-intel.pkvm=1"
+CONFIG_CMDLINE="root=/dev/nvme0n1p2 initramfs_async=1 loglevel=8 earlyprintk=ttyS0 console=ttyS0,115200 mem=8G nokaslr intel_iommu=sm_on rw kvm-intel.pkvm=1"
 CONFIG_CMDLINE_OVERRIDE=y
 CONFIG_HIBERNATION=y
 CONFIG_PM_WAKELOCKS=y

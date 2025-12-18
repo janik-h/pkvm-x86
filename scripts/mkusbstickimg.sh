@@ -34,6 +34,13 @@ sudo mount -o loop,offset=$((2048 * 512)) "${IMG_FILE}" "${MOUNT_POINT}"
 
 # Create the empty marker file
 sudo touch "${MOUNT_POINT}/${MARKER_FILE}"
+
+# LUKS kek
+if [ "x$LUKS" = "x1" ]; then
+  sudo mkdir -p ${MOUNT_POINT}/keys
+  cp ${BASE_DIR}/build/LUKS.KEK ${MOUNT_POINT}/keys
+fi
+
 # Add uefi boot app if requested
 if [ -n "${UEFI_BOOT_APP}" ] && [ -f "${UEFI_BOOT_APP}" ]; then
   echo "Adding ${UEFI_BOOT_APP} to USB media"

@@ -73,6 +73,8 @@ openfw-setup:
 kernel:
 	@cp scripts/nixos_* $(KERNEL_DIR)/arch/x86/configs/
 	$(MAKE) CC="$(CC)" -C$(KERNEL_DIR) -j$(NJOBS) nixos_defconfig bzImage modules
+	@$(MAKE) CC="$(CC)" -s -C$(KERNEL_DIR) -j$(NJOBS) kernelrelease \
+		| tee $(BASE_BUILD_DIR)/kernel.release
 
 kernel-clean:
 	$(MAKE) CC="$(CC)" -C$(KERNEL_DIR) -j$(NJOBS) mrproper
@@ -130,8 +132,11 @@ guestimage: $(SHIM) guest-kernel
 hostimage: $(BUILD_TOOLS) $(SHIM) kernel
 	@./scripts/create-hostimg.sh "$(USER)" "$(GROUP)"
 
+initramfs:
+	@./scripts/create-initramfs.sh
+
 .PHONY: all clean tools tools-clean run gdb poorman kernel kernel-clean \
-	kernel-distclean qemu qemu-clean qemu-distclean coreboot shim shim-clean \
-	target-sysroot target-sysroot-distclean target-qemu target-qemu-clean \
-	target-qemu-distclean target-crovm target-coreboot guest-kernel \
-	guestimage hostimage clean-usb $(DIRS)
+	kernel-distclean kernel-version qemu qemu-clean qemu-distclean coreboot \
+	 shim shim-clean target-sysroot target-sysroot-distclean target-qemu \
+	target-qemu-clean target-qemu-distclean target-crovm target-coreboot \
+	guest-kernel guestimage hostimage clean-usb initramfs $(DIRS)

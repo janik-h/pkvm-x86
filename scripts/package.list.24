@@ -31,6 +31,7 @@ bsdextrautils
 bsdutils
 bubblewrap
 build-essential
+busybox-static
 bzip2
 ca-certificates
 coreutils
@@ -52,6 +53,8 @@ cpp-riscv64-linux-gnu
 cpp-s390x-linux-gnu
 cpp-sparc64-linux-gnu
 cpp-x86-64-linux-gnu
+cryptsetup
+cryptsetup-initramfs
 dash
 dbus
 dbus-bin
@@ -184,6 +187,8 @@ hunspell-en-us
 ibverbs-providers:amd64
 icu-devtools
 init-system-helpers
+initramfs-tools-core
+initramfs-tools
 intltool-debian
 iproute2
 iptables

@@ -17,6 +17,8 @@ if [ -z "$KERNEL_CMDLINE" ]; then
 fi
 [ -z "$PRIVATEKEY" ] && PRIVATEKEY="$PWD/build/keydata/MOK-DB.priv"
 [ -z "$PUBLICKEY" ] && PUBLICKEY="$PWD/build/keydata/MOK-DB.pem"
+[ -z "$LUKSKEK" ] && LUKSKEK="$PWD/build/keydata/LUKS.KEK"
+[ -z "$LUKSUUID" ] && LUKSUUID="$PWD/build/keydata/LUKS.UUID"
 
 # usage: sysroot_error MESSAGE
 sysroot_error() {
@@ -37,6 +39,7 @@ sysroot_mount_all() {
 	sudo mount --rbind /dev "$2/dev"
 	sudo mount --make-rslave "$2/dev"
 	sudo mount -t proc none "$2/proc"
+	sudo mount -t sysfs none "$2/sys"
 	sudo mount --bind "$1/build" "$2/build"
 	sudo mount --bind -o ro "$1/scripts" "$2/build/scripts"
 }
@@ -68,6 +71,7 @@ sysroot_unmount_all() {
 	sysroot_do_unmount "$1/build/scripts" -l || true
 	sysroot_do_unmount "$1/build" -l || true
 	sysroot_do_unmount "$1/proc" -l || true
+	sysroot_do_unmount "$1/sys" -l || true
 	sysroot_do_unmount "$1/dev" -R || true
 }
 
@@ -216,7 +220,7 @@ add_kernel_sbat() {
 
 	objcopy --add-section .sbat=${SBAT_CSV} \
 		--set-section-flags .sbat=contents,alloc,load,readonly \
-		--adjust-section-vma .sbat=0x3000000 \
+		--adjust-section-vma .sbat=0x4000000 \
 		--set-section-alignment .sbat=4096 \
 		${BZIMAGE} \
 		${OUTPUT_IMAGE}
@@ -225,6 +229,7 @@ add_kernel_sbat() {
 # usage: sysroot_create_image_file SYSROOT_DIR FILE SIZE
 sysroot_create_image_file() {
 	local tmp_image_dir
+	local unlocked_partition
 
 	local sysroot_dir=$1
 	local file=$2
@@ -244,6 +249,14 @@ sysroot_create_image_file() {
 	tmp_image_dir=$(mktemp -d --tmpdir="$(pwd)/build")
 	[ ! -d "$tmp_image_dir" ] && sysroot_exit_error 1 "tempdir $tmp_image_dir creation failed"
 
+	if [ "x$EFI" = "x1" ]; then
+		if [ "x$LUKS" = "x1" ]; then
+			unlocked_partition="/dev/mapper/unlocked_part"
+		else
+			unlocked_partition="/dev/nbd0p2"
+		fi
+	fi
+
 	sudo -E bash -ec "
 	$(declare -f sysroot_do_unmount)
 	$(declare -f mformat_partition)
@@ -253,6 +266,9 @@ sysroot_create_image_file() {
 		sysroot_do_unmount '$tmp_image_dir/boot' || true
 		sysroot_do_unmount '$tmp_image_dir' -l || true
 		sync || true
+		if [ "x$LUKS" = "x1" ]; then
+			sudo cryptsetup luksClose "unlocked_part"
+		fi
 		qemu-nbd --disconnect /dev/nbd0 || true
 		sync || true
 		rmmod nbd || true
@@ -277,9 +293,16 @@ sysroot_create_image_file() {
 		sync
 		sleep 2
 		mformat_partition /dev/nbd0 1
-		mkfs.ext4 /dev/nbd0p2
+		if [ "x$LUKS" = "x1" ]; then
+			dd if=/dev/urandom of='$LUKSKEK' bs=64 count=1
+			sudo cryptsetup luksFormat "/dev/nbd0p2" --batch-mode --key-file '$LUKSKEK'
+			cryptsetup luksUUID "/dev/nbd0p2" > '$LUKSUUID'
+			sudo cryptsetup luksOpen "/dev/nbd0p2" "unlocked_part" --key-file '$LUKSKEK'
+		fi
+
+		mkfs.ext4 '$unlocked_partition'
 		sync
-		mount /dev/nbd0p2 '$tmp_image_dir'
+		mount '$unlocked_partition' '$tmp_image_dir'
 		sleep 2
 	else
 		parted -a optimal /dev/nbd0 mklabel gpt mkpart primary ext4 0% 100%
